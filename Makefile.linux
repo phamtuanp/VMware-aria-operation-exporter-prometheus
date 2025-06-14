@@ -1,0 +1,165 @@
+# VMware Aria Operations Prometheus Exporter Makefile for Linux
+# GNU Make compatible
+
+.PHONY: help install run test clean docker-build docker-run docker-stop logs setup-dev
+.PHONY: format lint check-config health metrics install-deps
+
+# Default target
+help:
+	@echo "VMware Aria Operations Prometheus Exporter - Linux Makefile"
+	@echo "Available targets:"
+	@echo "  install       - Install Python dependencies"
+	@echo "  install-deps  - Install system dependencies (requires sudo)"
+	@echo "  setup-dev     - Setup development environment"
+	@echo "  run           - Run the exporter locally"
+	@echo "  test          - Run tests"
+	@echo "  clean         - Clean up temporary files"
+	@echo "  docker-build  - Build Docker image"
+	@echo "  docker-run    - Run with Docker Compose"
+	@echo "  docker-stop   - Stop Docker Compose services"
+	@echo "  logs          - Show Docker Compose logs"
+	@echo "  format        - Format code with black"
+	@echo "  lint          - Run code linting"
+	@echo "  check-config  - Validate configuration file"
+	@echo "  health        - Check exporter health"
+	@echo "  metrics       - Show sample metrics"
+
+# Install system dependencies
+install-deps:
+	@echo "Installing system dependencies..."
+	sudo apt update
+	sudo apt install -y python3 python3-pip python3-venv curl wget git
+	@echo "System dependencies installed"
+
+# Install Python dependencies
+install:
+	@echo "Installing Python dependencies..."
+	pip3 install -r requirements.txt
+	@echo "Python dependencies installed"
+
+# Setup development environment
+setup-dev: install
+	@echo "Setting up development environment..."
+	pip3 install black flake8 mypy pytest
+	@if [ ! -f .env ]; then \
+		echo "Creating .env file from template..."; \
+		cp .env .env.local 2>/dev/null || echo "Please create .env file manually"; \
+	fi
+	mkdir -p logs
+	@echo "Development environment setup completed"
+
+# Run the exporter locally
+run:
+	@echo "Starting VMware Aria Operations exporter..."
+	python3 vmware_aria_exporter_advanced.py --config config.yaml
+
+# Run tests
+test:
+	@echo "Running tests..."
+	python3 -m pytest tests/ -v
+
+# Clean up
+clean:
+	@echo "Cleaning up temporary files..."
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	rm -rf build/
+	rm -rf dist/
+	rm -rf *.egg-info/
+	rm -f .coverage
+	@echo "Cleanup completed"
+
+# Docker targets
+docker-build:
+	@echo "Building Docker image..."
+	docker build -t vmware-aria-exporter .
+
+docker-run:
+	@echo "Starting Docker services..."
+	docker-compose up -d
+	@echo "Services started. Use 'make logs' to view logs"
+
+docker-stop:
+	@echo "Stopping Docker services..."
+	docker-compose down
+
+logs:
+	@echo "Showing Docker Compose logs..."
+	docker-compose logs -f
+
+# Code formatting and linting
+format:
+	@echo "Formatting code with black..."
+	black .
+	@echo "Code formatting completed"
+
+lint:
+	@echo "Running code linting..."
+	flake8 .
+	mypy . || true
+	@echo "Linting completed"
+
+# Configuration validation
+check-config:
+	@echo "Validating configuration file..."
+	python3 -c "import yaml; yaml.safe_load(open('config.yaml'))" && echo "✓ Configuration file is valid"
+
+# Health check
+health:
+	@echo "Checking exporter health..."
+	@curl -f http://localhost:8000/health 2>/dev/null && echo "✓ Exporter is healthy" || echo "✗ Exporter is not running or unhealthy"
+
+# Show sample metrics
+metrics:
+	@echo "Fetching sample metrics..."
+	@curl -s http://localhost:8000/metrics 2>/dev/null | head -20 || echo "✗ Exporter is not running"
+
+# Quick setup targets
+quick-standalone:
+	@echo "Quick setup for standalone mode..."
+	@./setup.sh -m standalone
+
+quick-stack:
+	@echo "Quick setup for full stack..."
+	@./setup.sh -m with-stack
+
+quick-existing:
+	@echo "Quick setup for existing stack..."
+	@./setup.sh -m existing-stack
+
+# Development helpers
+dev-run: setup-dev
+	@echo "Running in development mode..."
+	python3 vmware_aria_exporter_advanced.py --config config.yaml --log-level DEBUG
+
+dev-test: setup-dev
+	@echo "Running tests in development mode..."
+	python3 -m pytest tests/ -v --tb=short
+
+# Monitoring helpers
+monitor-logs:
+	@echo "Monitoring exporter logs..."
+	tail -f logs/*.log 2>/dev/null || echo "No log files found in logs/ directory"
+
+monitor-metrics:
+	@echo "Monitoring metrics (press Ctrl+C to stop)..."
+	watch -n 5 'curl -s http://localhost:8000/metrics | grep -E "vmware_aria_(up|resources_total|scrape_duration)"'
+
+# Cleanup and reset
+reset: clean docker-stop
+	@echo "Resetting environment..."
+	docker system prune -f
+	rm -f docker-compose.override.yml
+	@echo "Environment reset completed"
+
+# Show status
+status:
+	@echo "=== VMware Aria Operations Exporter Status ==="
+	@echo "Docker services:"
+	@docker-compose ps 2>/dev/null || echo "Docker Compose not running"
+	@echo ""
+	@echo "Exporter health:"
+	@curl -f http://localhost:8000/health 2>/dev/null && echo "✓ Healthy" || echo "✗ Not running"
+	@echo ""
+	@echo "Port status:"
+	@netstat -tlnp 2>/dev/null | grep -E ":(8000|9090|3000)" || echo "No services listening on default ports"

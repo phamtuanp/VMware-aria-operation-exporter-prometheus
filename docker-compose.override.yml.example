@@ -1,0 +1,40 @@
+# Docker Compose Override Example
+# Copy this file to docker-compose.override.yml and modify ports as needed
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d
+
+version: '3.8'
+
+services:
+  # VMware Aria Operations Exporter - Custom Port
+  vmware-aria-exporter:
+    ports:
+      - "8001:8000"  # Change host port from 8000 to 8001
+    # environment:
+    #   - EXPORTER_PORT=8000  # Container internal port stays the same
+
+  # Prometheus - Custom Port
+  prometheus:
+    ports:
+      - "9091:9090"  # Change host port from 9090 to 9091
+    # Note: Update Grafana datasource if needed
+
+  # Grafana - Custom Port
+  grafana:
+    ports:
+      - "3001:3000"  # Change host port from 3000 to 3001
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      # - GF_SERVER_HTTP_PORT=3000  # Container internal port stays the same
+
+# Example: All services on different ports
+# services:
+#   vmware-aria-exporter:
+#     ports:
+#       - "8001:8000"
+#   prometheus:
+#     ports:
+#       - "9091:9090"
+#   grafana:
+#     ports:
+#       - "3001:3000"

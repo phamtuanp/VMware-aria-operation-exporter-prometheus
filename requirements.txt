@@ -1,0 +1,10 @@
+# VMware Aria Operations Prometheus Exporter Dependencies
+
+# Core dependencies
+requests>=2.28.0
+prometheus-client>=0.15.0
+urllib3>=1.26.0
+
+# Optional dependencies for enhanced functionality
+pyyaml>=6.0
+click>=8.0.0

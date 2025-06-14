@@ -1,0 +1,50 @@
+# VMware Aria Operations Exporter Configuration
+
+# VMware Aria Operations connection settings
+vmware_aria:
+  host: "192.168.31.31"  # Replace with your VMware Aria Operations host
+  username: "admin"       # Replace with your username
+  password: ""            # Set via environment variable VMWARE_ARIA_PASSWORD
+  verify_ssl: false       # Set to true in production
+
+# Exporter settings
+exporter:
+  port: 8000              # Port for Prometheus metrics endpoint
+  interval: 300           # Collection interval in seconds (5 minutes)
+  log_level: "INFO"       # DEBUG, INFO, WARNING, ERROR
+
+# Metrics collection settings
+metrics:
+  # Resource types to collect detailed performance metrics
+  detailed_resource_types:
+    - "VirtualMachine"
+    - "HostSystem"
+    - "ClusterComputeResource"
+    - "Datastore"
+  
+  # Maximum number of performance metrics per resource
+  max_stats_per_resource: 10
+  
+  # Time range for performance metrics (in hours)
+  stats_time_range_hours: 1
+  
+  # Collection timeouts (in seconds)
+  timeouts:
+    resources: 60
+    alerts: 30
+    stats: 45
+    supermetrics: 30
+
+# Prometheus metric labels
+labels:
+  # Additional static labels to add to all metrics
+  static:
+    environment: "production"
+    datacenter: "dc1"
+  
+  # Resource name patterns to extract meaningful labels
+  resource_patterns:
+    # Extract cluster name from VM path
+    vm_cluster_pattern: "^/([^/]+)/.*"
+    # Extract datacenter from resource hierarchy
+    datacenter_pattern: "^/([^/]+)/.*"
